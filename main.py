@@ -8,14 +8,12 @@ import shutil
 
 # Поддерживаемые языки
 LANG_MAP = {
-    "python": ["requirements.txt", "*.py"],
-    "java": ["pom.xml", "*.java"],
-    "kotlin": ["build.gradle.kts", "*.kt"],
-    "node": ["package.json"],
-    "react": ["package.json", "src/index.js"],
-    "next": ["package.json", "next.config.js"],
-    "go": ["go.mod", "*.go"],
-    "cpp": ["CMakeLists.txt", "*.cpp"]
+    "python": "*.py",
+    "java": "*.java",
+    "kotlin": "*.kt",
+    "java_script": ".ks",
+    "go": "*.go",
+    "cpp": "*.cpp"
 }
 DOCKERS_DIR = "/dockers"
 
@@ -25,13 +23,9 @@ def detect_language(project_path: str) -> str | None:
     """
     for lang, patterns in LANG_MAP.items():
         for pattern in patterns:
-            if "*" not in pattern:
-                if os.path.exists(os.path.join(project_path, pattern)):
-                    return lang
-            else:
-                ext = pattern.split(".")[-1]
-                if any(f.endswith(ext) for f in os.listdir(project_path)):
-                    return lang
+            ext = pattern.split(".")[-1]
+            if any(f.endswith(ext) for f in os.listdir(project_path)):
+                return lang
     return None
 
 
@@ -44,8 +38,7 @@ def run_docker(lang: str, project_path: str) -> bool:
         print(f"[ОШИБКА] Нет Dockerfile для языка {lang}")
         return False
 
-    tmpdir = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as tmpdir:
         build_path = os.path.join(tmpdir, "build")
         shutil.copytree(project_path, build_path)
         shutil.copy(dockerfile, os.path.join(build_path, "Dockerfile"))
@@ -74,8 +67,6 @@ def run_docker(lang: str, project_path: str) -> bool:
             print("[ОШИБКА] Ошибка выполнения:")
             print(result.stdout)
             return False
-    finally:
-        shutil.rmtree(tmpdir)
 
 
 def main():
