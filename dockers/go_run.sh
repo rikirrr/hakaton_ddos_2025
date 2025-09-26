@@ -12,8 +12,9 @@ get_go_version() {
 
     if [ -f "$go_mod_file" ]; then
         echo "Анализирую Go-файл: $go_mod_file" >&2
-        # Ищем строку "go X.Y" и извлекаем версию (например, 1.21, 1.22)
-        version=$(grep -E '^\s*go\s+[0-9]+\.[0-9]+(\.[0-9]+)?' "$go_mod_file" | head -n 1 | awk '{print $2}')
+        # Ищем строку "go X.Y" и извлекаем версию (например, 1.21, 1.22).
+        # ИСПРАВЛЕНО: Упрощенное grep для надежного поиска строки "go X.Y"
+        version=$(grep '^go\s' "$go_mod_file" | head -n 1 | awk '{print $2}')
     fi
 
     # Добавляем патч-версию, если указана только мажорная/минорная (для корректной загрузки)
@@ -145,7 +146,8 @@ go version
 # 3. Определяем инструмент сборки
 BUILD_TOOL="go-build"
 BUILD_COMMAND=""
-BINARY_NAME="" # Имя исполняемого файла
+# Переменная для хранения ПУТИ к исполняемому файлу
+BINARY_EXEC_PATH=""
 
 # Приоритет: mage > task > make > go-build (чистый Go)
 if [ -f magefile.go ]; then
@@ -165,10 +167,14 @@ else
     # Для go-build мы соберем файл в текущем каталоге
     PROJECT_NAME=$(basename "$(pwd)")
     # Убираем все символы, кроме букв, цифр и тире
-    BINARY_NAME=$(echo "$PROJECT_NAME" | sed 's/[^a-zA-Z0-9_-]//g')
+    BINARY_NAME_RAW=$(echo "$PROJECT_NAME" | sed 's/[^a-zA-Z0-9_-]//g')
+
+    # ИСПРАВЛЕНО: Указываем явный путь к исполняемому файлу
+    BINARY_EXEC_PATH="./${BINARY_NAME_RAW}"
+
     # Компиляция чистого Go-проекта:
-    BUILD_COMMAND="go build -o $BINARY_NAME ./..."
-    echo "Будет создан исполняемый файл: $BINARY_NAME"
+    BUILD_COMMAND="go build -o $BINARY_EXEC_PATH ./..."
+    echo "Будет создан исполняемый файл: $BINARY_EXEC_PATH"
 fi
 
 # 4. Устанавливаем инструмент сборки
@@ -185,16 +191,17 @@ $BUILD_COMMAND
 if [ "$BUILD_TOOL" != "go-build" ]; then
     # Ищем бинарник, который был изменен в последнюю очередь,
     # игнорируя файлы в .git, .vscode и т.п.
-    # Если сборщик не определил имя явно, ищем его в текущем или подкаталогах 'bin', 'build'
-    # Имя будет соответствовать имени текущей папки, если иное не указано
-    BINARY_NAME=$(find . -type f -executable -not -path "./.git/*" -not -path "./vendor/*" -not -path "./.vscode/*" -mmin -5 | grep -v "\.sh$" | head -n 1)
+    BINARY_NAME_FOUND=$(find . -type f -executable -not -path "./.git/*" -not -path "./vendor/*" -not -path "./.vscode/*" -mmin -5 | grep -v "\.sh$" | head -n 1)
 
-    if [ -z "$BINARY_NAME" ]; then
+    if [ -n "$BINARY_NAME_FOUND" ]; then
+        BINARY_EXEC_PATH="$BINARY_NAME_FOUND"
+    else
         echo "Предупреждение: Не удалось автоматически найти исполняемый файл после сборки $BUILD_TOOL." >&2
         # Последняя попытка: ищем файл в текущей директории с именем папки
         FOLDER_NAME=$(basename "$(pwd)")
         if [ -f "$FOLDER_NAME" ]; then
-             BINARY_NAME="./$FOLDER_NAME"
+             # ИСПРАВЛЕНО: Указываем явный путь к исполняемому файлу
+             BINARY_EXEC_PATH="./$FOLDER_NAME"
         else
              echo "Критическая ошибка: Исполняемый файл не найден после сборки!"
              exit 1
@@ -202,10 +209,11 @@ if [ "$BUILD_TOOL" != "go-build" ]; then
     fi
 
     # Делаем файл исполняемым (на всякий случай)
-    chmod +x "$BINARY_NAME"
+    chmod +x "$BINARY_EXEC_PATH"
 fi
 
-echo "Запуск исполняемого файла: $BINARY_NAME"
+echo "Запуск исполняемого файла: $BINARY_EXEC_PATH"
 
 # 'exec' заменяет текущий процесс оболочки на процесс приложения
-exec "$BINARY_NAME"
+# ИСПРАВЛЕНО: Теперь BINARY_EXEC_PATH содержит полный путь (например, ./app или ./bin/app)
+exec "$BINARY_EXEC_PATH"
