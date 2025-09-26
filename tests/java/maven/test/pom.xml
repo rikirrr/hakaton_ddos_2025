@@ -35,7 +35,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>ru.ynovka.MainKt</mainClass>
+                            <mainClass>ru.ynovka.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
