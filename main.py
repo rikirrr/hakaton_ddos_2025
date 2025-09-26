@@ -15,7 +15,17 @@ LANG_MAP = {
     "go": "*.go",
     "cpp": "*.cpp"
 }
+
 DOCKERS_DIR = "/dockers"
+
+def show_help_message():
+    print("test")
+
+def show_lang_message():
+    print("Доступные языки программирования:\n"
+          "- python (pure, conda, poetry)\n"
+          "- java, kotlin (maven, gradle)\n"
+          "- java_script (next.js, node.js)")
 
 def detect_language(project_path: str) -> str | None:
     """
@@ -33,7 +43,7 @@ def run_docker(lang: str, project_path: str) -> bool:
     """
     Docker сборка и запуск
     """
-    dockerfile = os.path.join(DOCKERS_DIR, f"Dockerfile.{lang}")
+    dockerfile = os.path.join(DOCKERS_DIR, f"Dockerfile")
     if not os.path.exists(dockerfile):
         print(f"[ОШИБКА] Нет Dockerfile для языка {lang}")
         return False
@@ -46,7 +56,7 @@ def run_docker(lang: str, project_path: str) -> bool:
         image_tag = f"project_{lang}"
         # docker build
         result = subprocess.run(
-            ["docker", "build", "-t", image_tag, build_path],
+            ["docker", "build", "--build-arg", f"LANG_NAME={lang}", "-t", image_tag, build_path],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         if result.returncode != 0:
