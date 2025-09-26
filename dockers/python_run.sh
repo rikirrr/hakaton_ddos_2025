@@ -1,13 +1,18 @@
 #!/bin/bash
 set -e
 
+# Устанавливаем Python и pip
+apt-get update && apt-get install -y python3 python3-pip python3-venv && rm -rf /var/lib/apt/lists/*
+ln -sf /usr/bin/python3 /usr/bin/python
+ln -sf /usr/bin/pip3 /usr/bin/pip
+
 if [ -f requirements.txt ]; then
     echo "Установка через pip requirements.txt"
-    pip install -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt
 
 elif [ -f pyproject.toml ]; then
     echo "Установка через poetry"
-    pip install poetry
+    pip install --no-cache-dir poetry
     poetry install --no-root
 
 elif [ -f environment.yml ]; then
